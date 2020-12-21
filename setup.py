@@ -73,11 +73,11 @@ def create_or_update_stack():
         },
         {
             "file_name": '2.data_lake.yml',
-            "stack_name": 'data_lake'
+            "stack_name": 'data-lake'
         },
         {
             "file_name": '3.load_data.yml',
-            "stack_name": 'load_data'
+            "stack_name": 'load-data'
         }
     ]
 
