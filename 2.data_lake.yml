@@ -1,0 +1,255 @@
+Description: Creates Data Lake Imovel
+
+#Todos os recursos da Aws
+Resources:
+  DataLakeImovelRawBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: s3-mvp-imovel-raw
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: abort-incomplete-multipart-uploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+          - Id: move-old-objects-to-intelligent-tiering
+            Status: Enabled
+            Transitions:
+              - StorageClass: INTELLIGENT_TIERING
+                TransitionInDays: 90
+          - Id: move-old-versions-to-cheaper-tiering
+            Status: Enabled
+            NoncurrentVersionTransitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 30
+
+  DataLakeImovelProcessedBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: s3-mvp-imovel-processed
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  DataLakeImovelCuratedBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: s3-mvp-imovel-curated
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  DataLakeImovelRawDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Description: Raw data
+        LocationUri: !Join ['/', ['s3:/', !Ref DataLakeImovelRawBucket]]
+        Name: database_mvp_raw
+
+  DataLakeImovelProcessedDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Description: Processed data
+        LocationUri: !Join ['/', ['s3:/', !Ref DataLakeImovelProcessedBucket]]
+        Name: database_mvp_processed
+
+  DataLakeImovelCuratedDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Description: Curated data
+        LocationUri: !Join ['/', ['s3:/', !Ref DataLakeImovelCuratedBucket]]
+        Name: database_mvp_curated
+
+  IamRoleDataLakeImovelGlue:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: iam-role-service-datalake-imovel-glue
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: sts:AssumeRole
+          -
+            Sid: TrustRelationship
+            Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - Ref: IamAccessPolicyDataLakeGlue
+      Path: /
+
+  IamProfileDataLakeGlue:
+    Type: AWS::IAM::InstanceProfile
+    DependsOn: IamRoleDataLakeImovelGlue
+    Properties:
+      Path: /
+      Roles:
+        - Ref: IamRoleDataLakeImovelGlue
+
+#  IamAccessPolicyDataLakeGlue:
+#    Type: AWS::IAM::ManagedPolicy
+#    Properties:
+#      Description: Policy to give Glue role access to data lake
+#      Path: /
+#      PolicyDocument:
+#        Version: 2012-10-17
+#        Statement:
+#          -
+#            Effect: Allow
+#            Action:
+#              - s3:ListBucket
+#              - s3:GetObject
+#              - s3:PutObject
+#            Resource:
+#              - !ImportValue data-lake-DataLakeImovelRawBucketArn
+#              - !Join ["/", [!ImportValue data-lake-DataLakeImovelRawBucketArn, "*"]]
+#              - !ImportValue data-lake-DataLakeImovelProcessedBucketArn
+#              - !Join ["/", [!ImportValue data-lake-DataLakeImovelProcessedBucketArn, "*"]]
+#              - !ImportValue data-lake-DataLakeImovelCuratedBucketArn
+#              - !Join ["/", [!ImportValue data-lake-DataLakeImovelCuratedBucketArn, "*"]]
+#          - Effect: Allow
+#            Action:
+#              - cloudwatch:PutMetricData
+#              - glue:*
+#            Resource:
+#              - "*"
+#          - Effect: Allow
+#            Action:
+#              - logs:CreateLogGroup
+#              - logs:CreateLogStream
+#              - logs:PutLogEvents
+#            Resource:
+#              - arn:aws:logs:*:*:/aws-glue/*
+
+  IamAccessPolicyDataLakeGlue:
+      Type: AWS::IAM::ManagedPolicy
+      Properties:
+        Description: Policy to give Glue role access to data lake
+        Path: /
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:*
+              Resource:
+                - "*"
+            - Effect: Allow
+              Action:
+                - cloudwatch:PutMetricData
+                - glue:*
+              Resource:
+                - "*"
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource:
+                - arn:aws:logs:::/aws-glue/*
+
+  AthenaImovelDataEngineerWorkgroup:
+    Type: AWS::Athena::WorkGroup
+    Properties:
+      Description: Workgroup para engenheiros de dados executarem queries
+      Name: athena-imovel-data-engineer-workgroup
+      RecursiveDeleteOption: False
+      State: ENABLED
+      WorkGroupConfiguration:
+        BytesScannedCutoffPerQuery: 1000000000
+        EnforceWorkGroupConfiguration: True
+        PublishCloudWatchMetricsEnabled: True
+        ResultConfiguration:
+          EncryptionConfiguration:
+            EncryptionOption: SSE_S3
+          OutputLocation: !Join ['/', ['s3:/', !Ref AthenaImovelResultsBucket]]
+
+  AthenaImovelResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: s3-imovel-mvp-production-athena-results
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+Outputs: # Saída das dependências ( Depois de criar um recurso exporta a referencia )
+  DataLakeImovelRawBucketArn:
+    Value: !GetAtt DataLakeImovelRawBucket.Arn
+    Export:
+      Name: data-lake-DataLakeImovelRawBucketArn
+
+  DataLakeImovelProcessedBucketArn:
+    Value: !GetAtt DataLakeImovelProcessedBucket.Arn
+    Export:
+      Name: data-lake-DataLakeImovelProcessedBucketArn
+
+  DataLakeImovelCuratedBucketArn:
+    Value: !GetAtt DataLakeImovelCuratedBucket.Arn
+    Export:
+      Name: data-lake-DataLakeImovelCuratedBucketArn
+
+  DataLakeImovelRawBucketName:
+    Value: !Ref DataLakeImovelRawBucket
+    Export:
+      Name: data-lake-DataLakeImovelRawBucketName
+
+  DataLakeImovelProcessedBucketName:
+    Value: !Ref DataLakeImovelProcessedBucket
+    Export:
+      Name: data-lake-DataLakeImovelProcessedBucketName
+
+  DataLakeImovelCuratedBucketName:
+    Value: !Ref DataLakeImovelCuratedBucket
+    Export:
+      Name: data-lake-DataLakeImovelCuratedBucketName
+
+  DataLakeImovelProcessedDatabase:
+    Value: !Ref DataLakeImovelProcessedDatabase
+    Export:
+      Name: DataLakeImovelProcessedDatabase
+
+  IamRoleDataLakeImovelGlue:
+    Value: !Ref IamRoleDataLakeImovelGlue
+    Export:
+      Name: IamRoleDataLakeImovelGlue
+
+  DataLakeImovelRawDatabase:
+    Value: !Ref DataLakeImovelRawDatabase
+    Export:
+      Name: DataLakeImovelRawDatabase
+
+
