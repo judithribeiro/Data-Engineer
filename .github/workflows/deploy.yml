@@ -1,8 +1,8 @@
-name: Deploy S3 bucket
-
+name: Deploy data lake
 on:
   push:
-    branches: [ s3-bucket ]
+    banches:
+      - 1.github_actions
 
 jobs:
   deploy:
@@ -18,11 +18,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install boto3
         pip install -r requirements.txt
         pip install -r tests/requirements.txt
-    - name: Run tests
-      run: python -m pytest
-    - name: Deploy
+    - name: Build and publish
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
