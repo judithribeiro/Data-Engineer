@@ -1,0 +1,242 @@
+Description: Criação data warehouse
+
+Resources:
+  RedshiftProductionSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: production-data-warehouse/redshift-production-sg
+      GroupName: redshift-production-sg
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      SecurityGroupIngress:
+        - CidrIp: 37.156.75.55/32
+          Description: 'from 37.156.75.55/32:5439'
+          FromPort: 5439
+          IpProtocol: tcp
+          ToPort: 5439
+        - CidrIp: 10.0.128.0/18
+          Description: 'from 10.0.128.0/18:5439'
+          FromPort: 5439
+          IpProtocol: tcp
+          ToPort: 5439
+        - CidrIp: 10.0.192.0/18
+          Description: 'from 10.0.192.0/18:5439'
+          FromPort: 5439
+          IpProtocol: tcp
+          ToPort: 5439
+      VpcId:
+        'Fn::ImportValue': 'networking-VpcId'
+    Metadata:
+      'aws:cdk:path': production-data-warehouse/redshift-production-sg/Resource
+
+  IamProductionRedshiftSpectrumRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service: redshift.amazonaws.com
+        Version: '2012-10-17'
+      Description: Role to allow Redshift to access data lake using spectrum
+    Metadata:
+      'aws:cdk:path': production-data-warehouse/iam-production-redshift-spectrum-role/Resource
+
+  IamProductionRedshiftSpectrumPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 'glue:*'
+              - 'athena:*'
+            Effect: Allow
+            Resource: '*'
+          - Action:
+              - 's3:Get*'
+              - 's3:List*'
+              - 's3:Put*'
+            Effect: Allow
+            Resource:
+              - 'Fn::ImportValue': >-
+                  data-lake-DataLakeImovelRawBucketArn
+              - 'Fn::ImportValue': >-
+                  data-lake-DataLakeImovelProcessedBucketArn
+              - 'Fn::ImportValue': >-
+                  data-lake-DataLakeImovelCuratedBucketArn
+              - 'Fn::Join':
+                  - ''
+                  - - 'Fn::ImportValue': >-
+                        data-lake-DataLakeImovelRawBucketArn
+                    - /*
+              - 'Fn::Join':
+                  - ''
+                  - - 'Fn::ImportValue': >-
+                        data-lake-DataLakeImovelProcessedBucketArn
+                    - /*
+              - 'Fn::Join':
+                  - ''
+                  - - 'Fn::ImportValue': >-
+                        data-lake-DataLakeImovelCuratedBucketArn
+                    - /*
+        Version: '2012-10-17'
+      PolicyName: iam-production-redshift-spectrum-policy
+      Roles:
+        - Ref: IamProductionRedshiftSpectrumRole
+    Metadata:
+      'aws:cdk:path': >-
+        production-data-warehouse/iam-production-redshift-spectrum-policy/Resource
+
+  ImovelProductionRedshiftSubnets:
+    Type: 'AWS::Redshift::ClusterSubnetGroup'
+    Properties:
+      Description: Subnets for imovel-production-redshift Redshift cluster
+      SubnetIds:
+        - 'Fn::ImportValue': >-
+            networking-Subnet1
+        - 'Fn::ImportValue': >-
+            networking-Subnet2
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      'aws:cdk:path': production-data-warehouse/imovel-production-redshift/Subnets/Default
+
+  ImovelProductionRedshiftSecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      GenerateSecretString:
+        ExcludeCharacters: '"@/\ '''
+        GenerateStringKey: password
+        PasswordLength: 30
+        SecretStringTemplate: '{"username":"admin"}'
+    Metadata:
+      'aws:cdk:path': production-data-warehouse/imovel-production-redshift/Secret/Resource
+
+  ImovelProductionRedshiftSecretAttachment:
+    Type: 'AWS::SecretsManager::SecretTargetAttachment'
+    Properties:
+      SecretId:
+        Ref: ImovelProductionRedshiftSecret
+      TargetId:
+        Ref: ImovelProductionRedshift
+      TargetType: 'AWS::Redshift::Cluster'
+    Metadata:
+      'aws:cdk:path': >-
+        production-data-warehouse/imovel-production-redshift/Secret/Attachment/Resource
+
+  ImovelProductionRedshift:
+    Type: 'AWS::Redshift::Cluster'
+    Properties:
+      ClusterType: multi-node
+      DBName: dw
+      MasterUsername:
+        'Fn::Join':
+          - ''
+          - - '{{resolve:secretsmanager:'
+            - Ref: ImovelProductionRedshiftSecret
+            - ':SecretString:username::}}'
+      MasterUserPassword:
+        'Fn::Join':
+          - ''
+          - - '{{resolve:secretsmanager:'
+            - Ref: ImovelProductionRedshiftSecret
+            - ':SecretString:password::}}'
+      NodeType: dc2.large
+      AllowVersionUpgrade: true
+      AutomatedSnapshotRetentionPeriod: 1
+      ClusterIdentifier: imovel-production-redshift
+      ClusterSubnetGroupName:
+        Ref: ImovelProductionRedshiftSubnets
+      Encrypted: true
+      IamRoles:
+        - 'Fn::GetAtt':
+            - IamProductionRedshiftSpectrumRole
+            - Arn
+      NumberOfNodes: 2
+      PubliclyAccessible: true
+      VpcSecurityGroupIds:
+        - 'Fn::GetAtt':
+            - RedshiftProductionSecurityGroup
+            - GroupId
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      'aws:cdk:path': production-data-warehouse/imovel-production-redshift/Resource
+
+  CDKMetadata:
+    Type: 'AWS::CDK::Metadata'
+    Properties:
+      Modules: >-
+        aws-cdk=1.80.0,@aws-cdk/assets=1.71.0,@aws-cdk/aws-applicationautoscaling=1.71.0,@aws-cdk/aws-athena=1.71.0,@aws-cdk/aws-autoscaling-common=1.71.0,@aws-cdk/aws-cloudwatch=1.71.0,@aws-cdk/aws-codeguruprofiler=1.71.0,@aws-cdk/aws-dms=1.71.0,@aws-cdk/aws-ec2=1.71.0,@aws-cdk/aws-efs=1.71.0,@aws-cdk/aws-emr=1.71.0,@aws-cdk/aws-events=1.71.0,@aws-cdk/aws-glue=1.71.0,@aws-cdk/aws-iam=1.71.0,@aws-cdk/aws-kinesisfirehose=1.71.0,@aws-cdk/aws-kms=1.71.0,@aws-cdk/aws-lambda=1.71.0,@aws-cdk/aws-logs=1.71.0,@aws-cdk/aws-rds=1.71.0,@aws-cdk/aws-redshift=1.71.0,@aws-cdk/aws-s3=1.71.0,@aws-cdk/aws-s3-assets=1.71.0,@aws-cdk/aws-sam=1.71.0,@aws-cdk/aws-secretsmanager=1.71.0,@aws-cdk/aws-sqs=1.71.0,@aws-cdk/aws-ssm=1.71.0,@aws-cdk/cloud-assembly-schema=1.71.0,@aws-cdk/core=1.71.0,@aws-cdk/cx-api=1.71.0,@aws-cdk/region-info=1.71.0,jsii-runtime=Python/3.8.5
+    Metadata:
+      'aws:cdk:path': production-data-warehouse/CDKMetadata/Default
+    Condition: CDKMetadataAvailable
+
+Conditions:
+  CDKMetadataAvailable:
+    'Fn::Or':
+      - 'Fn::Or':
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-east-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-northeast-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-northeast-2
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-south-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-southeast-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-southeast-2
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ca-central-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - cn-north-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - cn-northwest-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - eu-central-1
+      - 'Fn::Or':
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - eu-north-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - eu-west-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - eu-west-2
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - eu-west-3
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - me-south-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - sa-east-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - us-east-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - us-east-2
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - us-west-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - us-west-2

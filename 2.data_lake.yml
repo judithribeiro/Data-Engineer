@@ -5,7 +5,7 @@ Resources:
   DataLakeImovelRawBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: s3-mvp-imovel-raw
+      BucketName: s3-production-mvp-imovel-raw
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -37,7 +37,7 @@ Resources:
   DataLakeImovelProcessedBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: s3-mvp-imovel-processed
+      BucketName: s3-production-mvp-imovel-processed
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -51,7 +51,7 @@ Resources:
   DataLakeImovelCuratedBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: s3-mvp-imovel-curated
+      BucketName: s3-production-mvp-imovel-curated
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -119,41 +119,6 @@ Resources:
       Roles:
         - Ref: IamRoleDataLakeImovelGlue
 
-#  IamAccessPolicyDataLakeGlue:
-#    Type: AWS::IAM::ManagedPolicy
-#    Properties:
-#      Description: Policy to give Glue role access to data lake
-#      Path: /
-#      PolicyDocument:
-#        Version: 2012-10-17
-#        Statement:
-#          -
-#            Effect: Allow
-#            Action:
-#              - s3:ListBucket
-#              - s3:GetObject
-#              - s3:PutObject
-#            Resource:
-#              - !ImportValue data-lake-DataLakeImovelRawBucketArn
-#              - !Join ["/", [!ImportValue data-lake-DataLakeImovelRawBucketArn, "*"]]
-#              - !ImportValue data-lake-DataLakeImovelProcessedBucketArn
-#              - !Join ["/", [!ImportValue data-lake-DataLakeImovelProcessedBucketArn, "*"]]
-#              - !ImportValue data-lake-DataLakeImovelCuratedBucketArn
-#              - !Join ["/", [!ImportValue data-lake-DataLakeImovelCuratedBucketArn, "*"]]
-#          - Effect: Allow
-#            Action:
-#              - cloudwatch:PutMetricData
-#              - glue:*
-#            Resource:
-#              - "*"
-#          - Effect: Allow
-#            Action:
-#              - logs:CreateLogGroup
-#              - logs:CreateLogStream
-#              - logs:PutLogEvents
-#            Resource:
-#              - arn:aws:logs:*:*:/aws-glue/*
-
   IamAccessPolicyDataLakeGlue:
       Type: AWS::IAM::ManagedPolicy
       Properties:
@@ -179,7 +144,8 @@ Resources:
                 - logs:CreateLogStream
                 - logs:PutLogEvents
               Resource:
-                - arn:aws:logs:::/aws-glue/*
+#                - arn:aws:logs:::/aws-glue/*
+                - arn:aws:logs:*:*:log-group:/aws-glue/crawlers:*
 
   AthenaImovelDataEngineerWorkgroup:
     Type: AWS::Athena::WorkGroup
@@ -200,13 +166,27 @@ Resources:
   AthenaImovelResultsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: s3-imovel-mvp-production-athena-results
+      BucketName: s3-production-mvp-imovel-athena-results
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  GlueJobScriptsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: s3-production-mvp-imovel-glue-jobs-scripts
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
 
 Outputs: # Saída das dependências ( Depois de criar um recurso exporta a referencia )
+  GlueJobScriptsBucketName:
+    Value: !Ref GlueJobScriptsBucket
+    Export:
+      Name: data-lake-GlueJobScriptsBucket
+
   DataLakeImovelRawBucketArn:
     Value: !GetAtt DataLakeImovelRawBucket.Arn
     Export:

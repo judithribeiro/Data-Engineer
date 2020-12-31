@@ -1,0 +1,220 @@
+Resources:
+  
+  ProductionEMRLogsBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: s3-imovel-production-emr-logs-bucket
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      'aws:cdk:path': production-emr-transform/production-emr-logs-bucket/Resource
+    
+  IAMProductionEMRDataLake:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: 's3:*'
+            Effect: Allow
+            Resource:
+              - 'Fn::ImportValue': >-
+                  data-lake-DataLakeImovelRawBucketArn
+              - 'Fn::ImportValue': >-
+                  data-lake-DataLakeImovelProcessedBucketArn
+              - 'Fn::ImportValue': >-
+                  data-lake-DataLakeImovelCuratedBucketArn
+              - 'Fn::Join':
+                  - ''
+                  - - 'Fn::ImportValue': >-
+                        data-lake-DataLakeImovelRawBucketArn
+                    - /*
+              - 'Fn::Join':
+                  - ''
+                  - - 'Fn::ImportValue': >-
+                    data-lake-DataLakeImovelProcessedBucketArn
+                    - /*
+              - 'Fn::Join':
+                  - ''
+                  - - 'Fn::ImportValue': >-
+                    data-lake-DataLakeImovelCuratedBucketArn
+                    - /*
+        Version: '2012-10-17'
+      PolicyName: iam-production-emr-data-lake
+      Roles:
+        - Ref: ProductionEMRClusterRole
+        - Ref: ProductionEMREC2Role
+    Metadata:
+      'aws:cdk:path': production-emr-transform/iam-production-emr-data-lake/Resource
+    
+  ProductionEMRClusterRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service: elasticmapreduce.amazonaws.com
+        Version: '2012-10-17'
+      Description: Role to allow EMR to process data
+      ManagedPolicyArns:
+        - 'Fn::Join':
+            - ''
+            - - 'arn:'
+              - Ref: 'AWS::Partition'
+              - ':iam::aws:policy/service-role/AmazonElasticMapReduceRole'
+    Metadata:
+      'aws:cdk:path': production-emr-transform/production-emr-cluster-role/Resource
+    
+  ProductionEMREC2Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                'Fn::Join':
+                  - ''
+                  - - ec2.
+                    - Ref: 'AWS::URLSuffix'
+        Version: '2012-10-17'
+      Description: Role to allow EMR to process data
+      ManagedPolicyArns:
+        - 'Fn::Join':
+            - ''
+            - - 'arn:'
+              - Ref: 'AWS::Partition'
+              - ':iam::aws:policy/service-role/AmazonElasticMapReduceforEC2Role'
+    Metadata:
+      'aws:cdk:path': production-emr-transform/production-emr-ec2-role/Resource
+    
+  ProductionEMRInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Roles:
+        - Ref: ProductionEMREC2Role
+      InstanceProfileName: production-emr-instance_profile
+    Metadata:
+      'aws:cdk:path': production-emr-transform/production-emr-instance_profile
+  
+  ProductionEMRCluster:
+    Type: 'AWS::EMR::Cluster'
+    Properties:
+      Instances:
+        CoreInstanceGroup:
+          InstanceCount: 2
+          InstanceType: m4.large
+          Market: ON_DEMAND
+          Name: Core
+        Ec2SubnetId:
+          'Fn::ImportValue': >-
+            networking-Subnet1
+        MasterInstanceGroup:
+          InstanceCount: 1
+          InstanceType: m4.large
+          Market: ON_DEMAND
+          Name: Master
+        TerminationProtected: false
+      JobFlowRole:
+        'Fn::GetAtt':
+          - ProductionEMRInstanceProfile
+          - Arn
+      Name: production-emr-cluster
+      ServiceRole:
+        'Fn::GetAtt':
+          - ProductionEMRClusterRole
+          - Arn
+      Applications:
+        - Name: Spark
+      Configurations:
+        - Classification: spark-hive-site
+          ConfigurationProperties:
+            hive.metastore.client.factory.class: >-
+              com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory
+      LogUri:
+        'Fn::Join':
+          - ''
+          - - 's3://'
+            - Ref: ProductionEMRLogsBucket
+            - /logs
+      ReleaseLabel: emr-5.30.1
+      VisibleToAllUsers: true
+    Metadata:
+      'aws:cdk:path': production-emr-transform/production-emr-cluster
+  
+  CDKMetadata:
+    Type: 'AWS::CDK::Metadata'
+    Properties:
+      Modules: >-
+        aws-cdk=1.80.0,@aws-cdk/assets=1.71.0,@aws-cdk/aws-applicationautoscaling=1.71.0,@aws-cdk/aws-athena=1.71.0,@aws-cdk/aws-autoscaling-common=1.71.0,@aws-cdk/aws-cloudwatch=1.71.0,@aws-cdk/aws-codeguruprofiler=1.71.0,@aws-cdk/aws-dms=1.71.0,@aws-cdk/aws-ec2=1.71.0,@aws-cdk/aws-efs=1.71.0,@aws-cdk/aws-emr=1.71.0,@aws-cdk/aws-events=1.71.0,@aws-cdk/aws-glue=1.71.0,@aws-cdk/aws-iam=1.71.0,@aws-cdk/aws-kinesisfirehose=1.71.0,@aws-cdk/aws-kms=1.71.0,@aws-cdk/aws-lambda=1.71.0,@aws-cdk/aws-logs=1.71.0,@aws-cdk/aws-rds=1.71.0,@aws-cdk/aws-redshift=1.71.0,@aws-cdk/aws-s3=1.71.0,@aws-cdk/aws-s3-assets=1.71.0,@aws-cdk/aws-sam=1.71.0,@aws-cdk/aws-secretsmanager=1.71.0,@aws-cdk/aws-sqs=1.71.0,@aws-cdk/aws-ssm=1.71.0,@aws-cdk/cloud-assembly-schema=1.71.0,@aws-cdk/core=1.71.0,@aws-cdk/cx-api=1.71.0,@aws-cdk/region-info=1.71.0,jsii-runtime=Python/3.8.5
+    Metadata:
+      'aws:cdk:path': production-emr-transform/CDKMetadata/Default
+    Condition: CDKMetadataAvailable
+  
+Conditions:
+  CDKMetadataAvailable:
+    'Fn::Or':
+      - 'Fn::Or':
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-east-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-northeast-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-northeast-2
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-south-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-southeast-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ap-southeast-2
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - ca-central-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - cn-north-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - cn-northwest-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - eu-central-1
+      - 'Fn::Or':
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - eu-north-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - eu-west-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - eu-west-2
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - eu-west-3
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - me-south-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - sa-east-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - us-east-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - us-east-2
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - us-west-1
+          - 'Fn::Equals':
+              - Ref: 'AWS::Region'
+              - us-west-2

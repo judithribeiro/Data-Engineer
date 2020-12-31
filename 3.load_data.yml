@@ -15,7 +15,7 @@ Resources:
   KinesisFirehoseS3Destination:
     Type: AWS::KinesisFirehose::DeliveryStream
     Properties:
-      DeliveryStreamName: kinesis-firehose-delivery-stream
+      DeliveryStreamName: kinesis-firehose-delivery-stream-zapimovel
       DeliveryStreamType: DirectPut
       ExtendedS3DestinationConfiguration:
         BucketARN: !ImportValue data-lake-DataLakeImovelRawBucketArn
@@ -26,6 +26,21 @@ Resources:
         ErrorOutputPrefix: bad_record_
         RoleARN: !GetAtt KinesisRole.Arn
         Prefix: "zapimoveis/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
+
+  KinesisFirehoseS3DestinationNetImovel:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: kinesis-firehose-delivery-stream-netimovel
+      DeliveryStreamType: DirectPut
+      ExtendedS3DestinationConfiguration:
+        BucketARN: !ImportValue data-lake-DataLakeImovelRawBucketArn
+        BufferingHints:
+          IntervalInSeconds: 60 # Tempo que o Kinesis vai esperar para jogar os dados no s3
+          SizeInMBs: 1
+        CompressionFormat: GZIP # Formato para salvar o arquivo
+        ErrorOutputPrefix: bad_record_
+        RoleARN: !GetAtt KinesisRole.Arn
+        Prefix: "netimoveis/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
 
   KinesisLogGroup: # Grupo de log
     Type: AWS::Logs::LogGroup
@@ -93,6 +108,23 @@ Resources:
         S3Targets:
           - Path: !Join ['/', ['s3:/', !ImportValue data-lake-DataLakeImovelRawBucketName, 'zapimoveis']]
 
+  RawNetImoveisCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Configuration: "{\"Version\":1.0,\"CrawlerOutput\":{\"Partitions\":{\"AddOrUpdateBehavior\":\"InheritFromTable\"}}}"
+      DatabaseName: !ImportValue 'DataLakeImovelRawDatabase'
+      Description: Raw Imovel Crawler
+      Name: raw-mvp-netimovel-crawler
+      Role: !ImportValue 'IamRoleDataLakeImovelGlue'
+      Schedule:
+        ScheduleExpression: 'cron(0 0 1 * ? *)'
+      SchemaChangePolicy:
+        DeleteBehavior: DEPRECATE_IN_DATABASE
+        UpdateBehavior: UPDATE_IN_DATABASE
+      Targets:
+        S3Targets:
+          - Path: !Join ['/', ['s3:/', !ImportValue data-lake-DataLakeImovelRawBucketName, 'netimoveis', 'public', 'netimoveis']]
+        
   ProcessedZapImoveisCrawler:
     Type: AWS::Glue::Crawler
     Properties:
@@ -108,7 +140,7 @@ Resources:
         UpdateBehavior: UPDATE_IN_DATABASE
       Targets:
         S3Targets:
-          - Path: !Join ['/', ['s3:/', !ImportValue data-lake-DataLakeImovelProcessedBucketName, 'zapimoveis']]
+          - Path: !Join ['/', ['s3:/', !ImportValue data-lake-DataLakeImovelProcessedBucketName, 'zapimovel']]
 
   CuratedZapImoveisCrawler:
     Type: AWS::Glue::Crawler
@@ -126,3 +158,13 @@ Resources:
       Targets: # Dependencias !ImportValue ( importar de outro recurso )
         S3Targets:
           - Path: !Join ['/', ['s3:/', !ImportValue data-lake-DataLakeImovelCuratedBucketName, 'zapimoveis']]
+
+  ZapImoveisRawGlueJob:
+    Type: AWS::Glue::Job
+    Properties:       
+      Command:
+        Name: glueetl 
+        ScriptLocation: !Join ['/', ['s3:/', !ImportValue data-lake-GlueJobScriptsBucket, 'root', 'convert_to_parquet.py']]         
+      Description: 'Converter arquivos da camada raw (json) para a camada processed (parquet)'      
+      Name: 'job-convert-json-to-parquet'
+      Role: !ImportValue 'IamRoleDataLakeImovelGlue'

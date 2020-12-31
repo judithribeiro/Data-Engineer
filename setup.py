@@ -78,6 +78,22 @@ def create_or_update_stack():
         {
             "file_name": '3.load_data.yml',
             "stack_name": 'load-data'
+        },
+        {
+            "file_name": '4.rds.yml',
+            "stack_name": 'rds'
+        },
+        {
+            "file_name": '5.dms.yml',
+            "stack_name": 'dms'
+        },
+        {
+            "file_name": '6.redshift.yml',
+            "stack_name": 'redshift'
+        },
+        {
+            "file_name": '7.emr.yml',
+            "stack_name": 'emr'
         }
     ]
 

@@ -1,56 +1,183 @@
-Description: Creates Data Lake Imovel
+Description: VPC
 
 #Todos os recursos da Aws
 Resources:
 #  VPC - Rede interna da Aws
   Vpc:
-    Type: AWS::EC2::VPC
+    Type: 'AWS::EC2::VPC'
     Properties:
-      CidrBlock: "10.1.0.0/16"
+      CidrBlock: 10.0.0.0/16
       EnableDnsHostnames: true
       EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: production-common/vpc-production
+    Metadata:
+      'aws:cdk:path': production-common/vpc-production/Resource
 # Dentro de cada região a Aws disponibiliza uma quantidade de Subnet ( Ec2 - Maquina para controlar Rede ) ( Distribur IP para os serviços )
   Subnet1:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Sub "${AWS::Region}a"
-      CidrBlock: 10.1.1.0/24
+      CidrBlock: 10.0.0.0/18
       VpcId: !Ref Vpc
+      AvailabilityZone:
+        'Fn::Select':
+          - 0
+          - 'Fn::GetAZs': ''
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: 'aws-cdk:subnet-name'
+          Value: Public
+        - Key: 'aws-cdk:subnet-type'
+          Value: Public
+        - Key: Name
+          Value: production-common/vpc-production/PublicSubnet1
+    Metadata:
+      'aws:cdk:path': production-common/vpc-production/PublicSubnet1/Subnet
 
-  Subnet1RouteTableAssociation:
+  Subnet1RouteTableAssociation: 
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref RouteTable
       SubnetId: !Ref Subnet1
 
-  Subnet2:
-    Type: AWS::EC2::Subnet
+  Subnet1EIP:
+    Type: 'AWS::EC2::EIP'
     Properties:
-      AvailabilityZone: !Sub "${AWS::Region}b"
-      CidrBlock: 10.1.2.0/24
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: production-common/vpc-production/PublicSubnet1
+    Metadata:
+      'aws:cdk:path': production-common/vpc-production/PublicSubnet1/EIP
+
+  Subnet1NATGateway:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId:
+        'Fn::GetAtt':
+          - Subnet1EIP
+          - AllocationId
+      SubnetId: !Ref Subnet1
+      Tags:
+        - Key: Name
+          Value: production-common/vpc-production/PublicSubnet1
+    Metadata:
+      'aws:cdk:path': production-common/vpc-production/PublicSubnet1/NATGateway
+
+  Subnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.64.0/18
       VpcId: !Ref Vpc
+      AvailabilityZone:
+        'Fn::Select':
+          - 1
+          - 'Fn::GetAZs': ''
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: 'aws-cdk:subnet-name'
+          Value: Public
+        - Key: 'aws-cdk:subnet-type'
+          Value: Public
+        - Key: Name
+          Value: production-common/vpc-production/PublicSubnet2
+    Metadata:
+      'aws:cdk:path': production-common/vpc-production/PublicSubnet2/Subnet
+  
+  Subnet2RouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: production-common/vpc-production/PublicSubnet2
+    Metadata:
+      'aws:cdk:path': production-common/vpc-production/PublicSubnet2/RouteTable    
+
+  Subnet2EIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: production-common/vpc-production/PublicSubnet2
+    Metadata:
+      'aws:cdk:path': production-common/vpc-production/PublicSubnet2/EIP
+
+  Subnet2NATGateway:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId:
+        'Fn::GetAtt':
+          - Subnet2EIP
+          - AllocationId
+      SubnetId: !Ref Subnet2
+      Tags:
+        - Key: Name
+          Value: production-common/vpc-production/PublicSubnet2
+    Metadata:
+      'aws:cdk:path': production-common/vpc-production/PublicSubnet2/NATGateway
+
+  PrivateSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.192.0/18
+      VpcId: !Ref Vpc
+      AvailabilityZone:
+        'Fn::Select':
+          - 1
+          - 'Fn::GetAZs': ''
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: 'aws-cdk:subnet-name'
+          Value: Private
+        - Key: 'aws-cdk:subnet-type'
+          Value: Private
+        - Key: Name
+          Value: production-common/vpc-production/PrivateSubnet2
+    Metadata:
+      'aws:cdk:path': production-common/vpc-production/PrivateSubnet2/Subnet
 
   Subnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: !Ref RouteTable
+      RouteTableId: !Ref Subnet2RouteTable
       SubnetId: !Ref Subnet2
+    Metadata:
+      'aws:cdk:path': production-common/vpc-production/PublicSubnet2/RouteTableAssociation
 
-  Subnet3:
-    Type: AWS::EC2::Subnet
+  DMSProductionReplicationSubnet:
+    Type: AWS::DMS::ReplicationSubnetGroup
     Properties:
-      AvailabilityZone: !Sub "${AWS::Region}c"
-      CidrBlock: 10.1.3.0/24
-      VpcId: !Ref Vpc
+      ReplicationSubnetGroupDescription: dms replication instance subnet group
+      SubnetIds:
+        - !Ref Subnet1
+        - !Ref Subnet2
+      ReplicationSubnetGroupIdentifier: dms-production-replication-subnet
+    Metadata:
+      aws:cdk:path: production-data-lake-raw-ingestion/dms-production-replication-subnet
 
-  Subnet3RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
+  RDSProductionSubnet:
+    Type: 'AWS::RDS::DBSubnetGroup'
     Properties:
-      RouteTableId: !Ref RouteTable
-      SubnetId: !Ref Subnet3
+      DBSubnetGroupDescription: place RDS on public subnet
+      SubnetIds:
+        - !Ref Subnet1
+        - !Ref Subnet2
+    Metadata:
+      'aws:cdk:path': production-common/rds-production-subnet/Default'
+
 # Liberar acesso externo
   InternetGateway:
-    Type: AWS::EC2::InternetGateway
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: production-common/vpc-production
+    Metadata:
+      'aws:cdk:path': production-common/vpc-production/IGW
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -62,6 +189,9 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: production-common/vpc-production/PrivateSubnet1
 
   IgwVPCRoute:
     Type: AWS::EC2::Route
@@ -69,26 +199,6 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
       RouteTableId: !Ref RouteTable
-
-
-# Encriptar os dados
-#  DataLakeEncryptionKey:
-#    Type: AWS::KMS::Key
-#    Properties:
-#      Description: Data lake encryption key
-#      Enabled: true
-#      EnableKeyRotation: true
-#      KeyUsage: ENCRYPT_DECRYPT
-#      KeyPolicy:
-#        Version: '2012-10-17'
-#        Id: key-default-1
-#        Statement:
-#          - Sid: Enable IAM User Permissions
-#            Effect: Allow
-#            Principal:
-#              AWS: !Ref AWS::AccountId
-#            Action: kms:*
-#            Resource: '*'
 
 
 Outputs: # Saída das dependências ( Depois de criar um recurso exporta a referencia )
@@ -107,7 +217,13 @@ Outputs: # Saída das dependências ( Depois de criar um recurso exporta a refer
     Export:
       Name: networking-Subnet2
 
-  Subnet3:
-    Value: !Ref Subnet3
+  RDSProductionSubnet:
+    Value: !Ref RDSProductionSubnet
     Export:
-      Name: networking-Subnet3
+      Name: networking-RDSProductionSubnet
+
+  DMSProductionReplicationSubnet:
+    Value: !Ref DMSProductionReplicationSubnet
+    Export:
+      Name: networking-DMSProductionReplicationSubnet
+    
