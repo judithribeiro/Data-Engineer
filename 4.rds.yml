@@ -3,37 +3,6 @@ Description: RDS
 #Todos os recursos da Aws
 Resources:
 
-  # ImoveisProductionSecurityGroup:
-  #   Type: 'AWS::EC2::SecurityGroup'
-  #   Properties:
-  #     GroupDescription: production-common/imoveis-production-sg
-  #     GroupName: imoveis-production-sg
-  #     SecurityGroupEgress:
-  #       - CidrIp: 0.0.0.0/0
-  #         Description: Allow all outbound traffic by default
-  #         IpProtocol: '-1'
-  #     SecurityGroupIngress:
-  #       - CidrIp: 0.0.0.0/0
-  #         Description: 'from 138.0.174.147/32:5432'
-  #         FromPort: 5432
-  #         IpProtocol: tcp
-  #         ToPort: 5432
-  #       - CidrIp: 10.0.128.0/18
-  #         Description: 'from 10.0.128.0/18:5432'
-  #         FromPort: 5432
-  #         IpProtocol: tcp
-  #         ToPort: 5432
-  #       - CidrIp: 10.0.192.0/18
-  #         Description: 'from 10.0.192.0/18:5432'
-  #         FromPort: 5432
-  #         IpProtocol: tcp
-  #         ToPort: 5432
-  #     VpcId:
-  #       Fn::ImportValue: networking-VpcId
-  #   Metadata:
-  #     'aws:cdk:path': production-common/imoveis-production-sg/Resource'
-
-
   ImoveisProductionSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:

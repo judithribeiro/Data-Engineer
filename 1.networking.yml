@@ -148,17 +148,6 @@ Resources:
     Metadata:
       'aws:cdk:path': production-common/vpc-production/PublicSubnet2/RouteTableAssociation
 
-  DMSProductionReplicationSubnet:
-    Type: AWS::DMS::ReplicationSubnetGroup
-    Properties:
-      ReplicationSubnetGroupDescription: dms replication instance subnet group
-      SubnetIds:
-        - !Ref Subnet1
-        - !Ref Subnet2
-      ReplicationSubnetGroupIdentifier: dms-production-replication-subnet
-    Metadata:
-      aws:cdk:path: production-data-lake-raw-ingestion/dms-production-replication-subnet
-
   RDSProductionSubnet:
     Type: 'AWS::RDS::DBSubnetGroup'
     Properties:
@@ -222,8 +211,5 @@ Outputs: # Saída das dependências ( Depois de criar um recurso exporta a refer
     Export:
       Name: networking-RDSProductionSubnet
 
-  DMSProductionReplicationSubnet:
-    Value: !Ref DMSProductionReplicationSubnet
-    Export:
-      Name: networking-DMSProductionReplicationSubnet
+
     

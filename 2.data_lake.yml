@@ -88,7 +88,7 @@ Resources:
         Description: Curated data
         LocationUri: !Join ['/', ['s3:/', !Ref DataLakeImovelCuratedBucket]]
         Name: database_mvp_curated
-
+# O Glue precisa ter acesso de leitura e escrita no S3 e de esctita no log
   IamRoleDataLakeImovelGlue:
     Type: AWS::IAM::Role
     Properties:
@@ -162,7 +162,7 @@ Resources:
           EncryptionConfiguration:
             EncryptionOption: SSE_S3
           OutputLocation: !Join ['/', ['s3:/', !Ref AthenaImovelResultsBucket]]
-
+# Bucket para guardar as info do Athena
   AthenaImovelResultsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -171,7 +171,7 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-
+# Bucket para guardar os Scripts do Glue
   GlueJobScriptsBucket:
     Type: AWS::S3::Bucket
     Properties:

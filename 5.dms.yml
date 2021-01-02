@@ -1,7 +1,6 @@
 Description: Criando migração de dados de postgresql para s3
 
 Resources:
-
   IamDataLakeDMSRole:
     Type: AWS::IAM::Role
     Properties:
@@ -99,22 +98,6 @@ Resources:
     Metadata:
       aws:cdk:path: production-data-lake-raw-ingestion/dms-production-sg/Resource
 
-  DMSReplicationInstanceProduction:
-    Type: AWS::DMS::ReplicationInstance
-    Properties:
-      ReplicationInstanceClass: dms.t2.small
-      AllocatedStorage: 100
-      EngineVersion: 3.3.3
-      PubliclyAccessible: false
-      ReplicationInstanceIdentifier: dms-production-replication-instance
-      ReplicationSubnetGroupIdentifier: dms-production-replication-subnet
-      VpcSecurityGroupIds:
-      - Fn::GetAtt:
-        - DMSProductionSecurityGroup
-        - GroupId
-    Metadata:
-      aws:cdk:path: production-data-lake-raw-ingestion/dms-replication-instance-production
-
   DMSTaskImoveisRDS:
     Type: AWS::DMS::ReplicationTask
     Properties:
@@ -129,8 +112,46 @@ Resources:
       TargetEndpointArn:
         Ref: DMSProductionImoveisS3Endpoint
       ReplicationTaskIdentifier: production-dms-task-imoveis-rds
+#    DependsOn: IamDataLakeDMSRole
+
+
     Metadata:
       aws:cdk:path: production-data-lake-raw-ingestion/production-dms-task-imoveis-rds
+
+  DMSProductionReplicationSubnet:
+    Type: AWS::DMS::ReplicationSubnetGroup
+    Properties:
+      ReplicationSubnetGroupDescription: dms replication instance subnet group
+      SubnetIds:
+        - 'Fn::ImportValue': >-
+            networking-Subnet1
+        - 'Fn::ImportValue': >-
+            networking-Subnet2
+      ReplicationSubnetGroupIdentifier: dms-production-replication-subnet
+#    DependsOn:
+#    - IamDataLakeDMSRole
+#    - IamDataLakeDMSPolicy
+
+    Metadata:
+      aws:cdk:path: production-data-lake-raw-ingestion/dms-production-replication-subnet
+
+  DMSReplicationInstanceProduction:
+    Type: AWS::DMS::ReplicationInstance
+    Properties:
+      ReplicationInstanceClass: dms.t2.small
+      AllocatedStorage: 100
+      EngineVersion: 3.3.3
+      PubliclyAccessible: false
+      ReplicationInstanceIdentifier: dms-production-replication-instance
+      ReplicationSubnetGroupIdentifier: dms-production-replication-subnet
+      VpcSecurityGroupIds:
+      - Fn::GetAtt:
+        - DMSProductionSecurityGroup
+        - GroupId
+    DependsOn: DMSProductionReplicationSubnet
+
+    Metadata:
+      aws:cdk:path: production-data-lake-raw-ingestion/dms-replication-instance-production
 
   CDKMetadata:
     Type: AWS::CDK::Metadata
@@ -205,4 +226,8 @@ Conditions:
       - Fn::Equals:
         - Ref: AWS::Region
         - us-west-2
-      
+#Outputs: # Saída das dependências ( Depois de criar um recurso exporta a referencia )
+#    DMSProductionReplicationSubnet:
+#      Value: !Ref DMSProductionReplicationSubnet
+#      Export:
+#        Name: networking-DMSProductionReplicationSubnet
