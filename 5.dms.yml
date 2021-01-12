@@ -1,4 +1,5 @@
-Description: Criando migração de dados de postgresql para s3
+Description: Criando migração de dados de postgresql para s3 ( Fica escutando o BD o tempo inteiro e a cada insert/Delete/Update ele insere no s3)
+#Não roda direto por enquanto )
 
 Resources:
   IamDataLakeDMSRole:

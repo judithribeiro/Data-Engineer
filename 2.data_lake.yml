@@ -88,7 +88,8 @@ Resources:
         Description: Curated data
         LocationUri: !Join ['/', ['s3:/', !Ref DataLakeImovelCuratedBucket]]
         Name: database_mvp_curated
-# O Glue precisa ter acesso de leitura e escrita no S3 e de esctita no log
+
+# O Glue precisa ter acesso de leitura e escrita no S3 e de escrita no log ( IamRole = função de permissão de serviço para recurso)
   IamRoleDataLakeImovelGlue:
     Type: AWS::IAM::Role
     Properties:
@@ -181,6 +182,11 @@ Resources:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
 
+  ApiLambdasFunctionsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: s3-production-mvp-imovel-lambdas
+
 Outputs: # Saída das dependências ( Depois de criar um recurso exporta a referencia )
   GlueJobScriptsBucketName:
     Value: !Ref GlueJobScriptsBucket
@@ -231,5 +237,10 @@ Outputs: # Saída das dependências ( Depois de criar um recurso exporta a refer
     Value: !Ref DataLakeImovelRawDatabase
     Export:
       Name: DataLakeImovelRawDatabase
+
+  ApiLambdasFunctionsBucketName:
+      Value: !Ref ApiLambdasFunctionsBucket
+      Export:
+        Name: data-lake-ApiLambdasFunctionsBucket
 
 

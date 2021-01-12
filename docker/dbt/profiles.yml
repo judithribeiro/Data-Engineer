@@ -1,0 +1,17 @@
+redshift:
+  target: dev
+  outputs:
+      dev:
+        type: redshift
+        method: iam
+        threads: 1
+        cluster_id: dw-production-redshift-cluster
+        host: dw-production-redshift-cluster.cxs0lbs5qmda.us-east-2.redshift.amazonaws.com
+        port: 5439
+        user: admin
+        iam_profile: devops
+        iam_duration_seconds: 900
+        autocreate: true
+        pass: '|r,xR?vDRyrIzgsM:!#7!eIK`fuR4D'
+        dbname: dw
+        schema: dbt_imovel

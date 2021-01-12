@@ -25,8 +25,8 @@ Resources:
         CompressionFormat: GZIP # Formato para salvar o arquivo
         ErrorOutputPrefix: bad_record_
         RoleARN: !GetAtt KinesisRole.Arn
-        Prefix: "zapimoveis/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
-
+        Prefix: "zapimoveis/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/" #Nome do diretório que ele vai criar
+#Não foi usado
   KinesisFirehoseS3DestinationNetImovel:
     Type: AWS::KinesisFirehose::DeliveryStream
     Properties:
@@ -140,7 +140,7 @@ Resources:
         UpdateBehavior: UPDATE_IN_DATABASE
       Targets:
         S3Targets:
-          - Path: !Join ['/', ['s3:/', !ImportValue data-lake-DataLakeImovelProcessedBucketName, 'zapimovel']]
+          - Path: !Join ['/', ['s3:/', !ImportValue data-lake-DataLakeImovelProcessedBucketName, 'zapimoveis']]
 
   CuratedZapImoveisCrawler:
     Type: AWS::Glue::Crawler

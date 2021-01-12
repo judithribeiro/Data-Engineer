@@ -85,7 +85,7 @@ Resources:
           Value: production-common/vpc-production/PublicSubnet2
     Metadata:
       'aws:cdk:path': production-common/vpc-production/PublicSubnet2/Subnet
-  
+
   Subnet2RouteTable:
     Type: 'AWS::EC2::RouteTable'
     Properties:
@@ -94,7 +94,7 @@ Resources:
         - Key: Name
           Value: production-common/vpc-production/PublicSubnet2
     Metadata:
-      'aws:cdk:path': production-common/vpc-production/PublicSubnet2/RouteTable    
+      'aws:cdk:path': production-common/vpc-production/PublicSubnet2/RouteTable
 
   Subnet2EIP:
     Type: 'AWS::EC2::EIP'

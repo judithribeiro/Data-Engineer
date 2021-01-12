@@ -1,0 +1,30 @@
+
+version: 2
+
+sources:
+    - name: database_mvp_raw
+      schema: glue_data_lake_raw
+      tables:
+         - name: zapimoveis
+           identifier: zapimoveis
+         - name: netimoveis
+           identifier: netimoveis
+
+    - name: database_mvp_processed
+      schema: glue_data_lake_processed
+      tables:
+        - name: zapimoveis
+          identifier: zapimoveis
+
+#    - name: my_second_dbt_model
+#      description: "A starter dbt model"
+#      columns:
+#          - name: id
+#            description: "The primary key for this table"
+#            tests:
+#                - unique
+#                - not_null
+
+
+
+
