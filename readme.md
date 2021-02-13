@@ -1,26 +1,15 @@
 # Data Lake Imóvel
 
-Esse projeto tem o objetivo de precificar  imóveis de acordo com os dados geográficos, características do imóvel e oferta, usando algoritmos de predição.
+Esse projeto tem o objetivo de precificar  imóveis de acordo com os dados geográficos, características do imóvel e volume de oferta, usando algoritmos de predição.
 
 O Data Lake foi estruturado na Aws, usando os seguintes serviços:
 
-# IAC ( Infraestrutura como Código )
 Cloudformation
-Github
-GitAction
-
-# Storage
 S3
-
-# Catalog
-Glue crawler
-
-# DataWhareHouse
-
 DMS
 Kinesses Firehouse
 IAM
-
+Glue crawler
 Glue Job
 Glue Database
 Athena
@@ -33,7 +22,8 @@ ECR
 Airflow
 Python
 Docker
-
+Github
+GitAction
 Secret Manager
 
 ![Data Lake](assets/DL_Imovel.png)
