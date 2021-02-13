@@ -1,6 +1,7 @@
-# Data Lake Imóvel
+# Data Lake - Dados para precificação de Imóveis
 
-Esse projeto tem o objetivo de precificar  imóveis de acordo com os dados geográficos, características do imóvel e volume de oferta, usando algoritmos de predição.
+Esse projeto tem o objetivo de precificar imóveis de acordo com os dados demográficos, características do imóvel e volume de oferta, usando algoritmos de predição.
+A ingestão dos dados foi feita através de crawlers em sites de grandes players de mercado, utilizando Python.
 
 
 O Data Lake foi estruturado na Aws, usando os seguintes serviços:
