@@ -2,7 +2,11 @@
 
 Esse projeto tem o objetivo de precificar  imóveis de acordo com os dados geográficos, características do imóvel e volume de oferta, usando algoritmos de predição.
 
+
 O Data Lake foi estruturado na Aws, usando os seguintes serviços:
+
+![Data Lake](assets/DL_Imovel.png)
+
 
 * Cloudformation
 * S3
@@ -26,4 +30,4 @@ O Data Lake foi estruturado na Aws, usando os seguintes serviços:
 * GitAction
 * Secret Manager
 
-![Data Lake](assets/DL_Imovel.png)
+
