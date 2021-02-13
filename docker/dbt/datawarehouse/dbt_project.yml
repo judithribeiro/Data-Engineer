@@ -35,8 +35,8 @@ models:
   dbt_imovel:
       # Applies to all files under models/example/
       staging:
-          materialized: ephemeral
+          materialized: ephemeral #Não fazer automaticamente - imprime na tela
       mart:
-          materialized: table
+          materialized: table #Executar a consulta e gerar a tabela
 
 

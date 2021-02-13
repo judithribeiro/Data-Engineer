@@ -5,7 +5,7 @@
 
     Try changing "table" to "view" below
 */
-
+-- Alterou o parametro para salvar os dados na tabela
 {{
     config(
         materialized='table', bind=False
